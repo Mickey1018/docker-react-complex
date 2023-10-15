@@ -11,9 +11,9 @@ jobs:
       # Test docker login
       - run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
-      # - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
       # Do testing
-      - run: docker build -t 19921018/react-test -f ./client/Dockerfile.dev
+      - run: docker build -t 19921018/react-test -f ./client/Dockerfile.dev ./client
       - run: docker run -e CI=true 19921018/react-test npm test  # test dev container
 
       # Build docker file
