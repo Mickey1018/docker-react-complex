@@ -1,0 +1,45 @@
+name: Deploy Frontend
+on:
+  push:
+    branches:
+      - main # check your repo, your default branch might be master!
+ 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Test docker login
+      - run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+      # - uses: actions/checkout@v3
+      # Do testing
+      - run: docker build -t 19921018/react-test -f ./client/Dockerfile.dev ./client
+      - run: docker run -e CI=true 19921018/react-test npm test  # test dev container
+
+      # Build docker file
+      - run: docker build -t 19921018/multi-client ./client
+      - run: docker build -t 19921018/multi-nginx ./nginx
+      - run: docker build -t 19921018/multi-server ./server
+      - run: docker build -t 19921018/multi-worker ./worker
+      
+      # Push to Dockerhub
+      - run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+      - run: docker push 19921018/multi-client
+      - run: docker push 19921018/multi-nginx
+      - run: docker push 19921018/multi-server
+      - run: docker push 19921018/multi-worker
+ 
+      - name: Generate deployment package
+        run: zip -r deploy.zip . -x '*.git*'
+ 
+      - name: Deploy to EB
+        uses: einaregilsson/beanstalk-deploy@v18
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_KEY }}
+          application_name: multi-docker  # see Elastic Beanstalk
+          environment_name: Multi-docker-env  # see Elastic Beanstalk
+          existing_bucket_name: elasticbeanstalk-ap-northeast-3-562786867924
+          region: ap-northeast-3
+          version_label: ${{ github.sha }}
+          deployment_package: deploy.zip
